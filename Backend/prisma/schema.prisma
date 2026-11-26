@@ -7,10 +7,12 @@ datasource db {
 }
 
 model Sucursal {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @unique @db.VarChar(100)
-  activo   Boolean   @default(true)
-  usuarios Usuario[]
+  id          Int                  @id @default(autoincrement())
+  nombre      String               @unique @db.VarChar(100)
+  activo      Boolean              @default(true)
+  usuarios    Usuario[]
+  existencias ExistenciaSucursal[]
+  compras     Compra[]
 
   @@map("sucursales")
 }
@@ -37,4 +39,149 @@ model Usuario {
   sucursal       Sucursal? @relation(fields: [sucursalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("usuarios")
+}
+
+model Categoria {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique @db.NVarChar(100)
+  activo    Boolean    @default(true)
+  productos Producto[]
+
+  @@map("categorias")
+}
+
+model Producto {
+  id              Int       @id @default(autoincrement())
+  codigo          String    @unique @db.NVarChar(30)
+  nombre          String    @db.NVarChar(150)
+  descripcion     String?   @db.NVarChar(500)
+  categoriaId     Int       @map("categoria_id")
+  tipo            String    @db.VarChar(10)
+  /// Precio común a todas las sucursales, con IVA incluido.
+  precioVenta     Decimal   @map("precio_venta") @db.Decimal(12, 2)
+  insumoReventaId Int?      @map("insumo_reventa_id")
+  activo          Boolean   @default(true)
+  categoria       Categoria @relation(fields: [categoriaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  insumoReventa   Insumo?   @relation(fields: [insumoReventaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recetas         Receta[]
+
+  @@unique([id, tipo])
+  @@map("productos")
+}
+
+model Insumo {
+  id               Int                  @id @default(autoincrement())
+  codigo           String               @unique @db.NVarChar(30)
+  nombre           String               @db.NVarChar(120)
+  unidadBase       String               @map("unidad_base") @db.VarChar(6)
+  activo           Boolean              @default(true)
+  productosReventa Producto[]
+  recetas          Receta[]
+  existencias      ExistenciaSucursal[]
+  detallesCompra   DetalleCompra[]
+
+  @@map("insumos")
+}
+
+model Receta {
+  productoId   Int      @map("producto_id")
+  /// La restricción SQL y la relación compuesta reservan las recetas para los elaborados.
+  tipoProducto String   @default("elaborado") @map("tipo_producto") @db.VarChar(10)
+  insumoId     Int      @map("insumo_id")
+  cantidad     Decimal  @db.Decimal(18, 3)
+  producto     Producto @relation(fields: [productoId, tipoProducto], references: [id, tipo], onDelete: NoAction, onUpdate: NoAction)
+  insumo       Insumo   @relation(fields: [insumoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([productoId, insumoId])
+  @@map("recetas")
+}
+
+model ExistenciaSucursal {
+  sucursalId     Int                    @map("sucursal_id")
+  insumoId       Int                    @map("insumo_id")
+  cantidadActual Decimal                @default(0) @map("cantidad_actual") @db.Decimal(18, 3)
+  cantidadMinima Decimal                @default(0) @map("cantidad_minima") @db.Decimal(18, 3)
+  sucursal       Sucursal               @relation(fields: [sucursalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  insumo         Insumo                 @relation(fields: [insumoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movimientos    MovimientoInventario[]
+
+  @@id([sucursalId, insumoId])
+  @@map("existencias_sucursal")
+}
+
+model MovimientoInventario {
+  id                  BigInt             @id @default(autoincrement())
+  sucursalId          Int                @map("sucursal_id")
+  insumoId            Int                @map("insumo_id")
+  tipo                String             @db.VarChar(10)
+  /// Entrada positiva, salida negativa y ajuste positivo o negativo.
+  cantidadCambio      Decimal            @map("cantidad_cambio") @db.Decimal(18, 3)
+  motivo              String             @db.NVarChar(150)
+  fecha               DateTime           @default(now())
+  costoUnitarioCompra Decimal?           @map("costo_unitario_compra") @db.Decimal(18, 6)
+  existencia          ExistenciaSucursal @relation(fields: [sucursalId, insumoId], references: [sucursalId, insumoId], onDelete: NoAction, onUpdate: NoAction)
+  detalleCompraId     Int?               @map("detalle_compra_id")
+  detalleCompra       DetalleCompra?     @relation(fields: [detalleCompraId, insumoId], references: [id, insumoId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([sucursalId, insumoId, fecha])
+  @@map("movimientos_inventario")
+}
+
+model Proveedor {
+  id      Int      @id @default(autoincrement())
+  codigo  String   @unique @db.NVarChar(30)
+  nombre  String   @db.NVarChar(150)
+  activo  Boolean  @default(true)
+  compras Compra[]
+
+  @@map("proveedores")
+}
+
+model Compra {
+  id            Int             @id @default(autoincrement())
+  proveedorId   Int             @map("proveedor_id")
+  sucursalId    Int             @map("sucursal_id")
+  numeroFactura String          @map("numero_factura") @db.NVarChar(50)
+  fecha         DateTime        @default(now())
+  /// Importe de la compra antes del IVA.
+  subtotal      Decimal         @db.Decimal(12, 2)
+  iva           Decimal         @db.Decimal(12, 2)
+  total         Decimal         @db.Decimal(12, 2)
+  proveedor     Proveedor       @relation(fields: [proveedorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sucursal      Sucursal        @relation(fields: [sucursalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  detalles      DetalleCompra[]
+  pagos         PagoCompra[]
+
+  @@unique([proveedorId, numeroFactura])
+  @@index([sucursalId, fecha])
+  @@map("compras")
+}
+
+model DetalleCompra {
+  id            Int                    @id @default(autoincrement())
+  compraId      Int                    @map("compra_id")
+  insumoId      Int                    @map("insumo_id")
+  cantidad      Decimal                @db.Decimal(18, 3)
+  /// Costo por unidad base del insumo, antes del IVA.
+  costoUnitario Decimal                @map("costo_unitario") @db.Decimal(18, 6)
+  compra        Compra                 @relation(fields: [compraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  insumo        Insumo                 @relation(fields: [insumoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movimientos   MovimientoInventario[]
+
+  @@unique([compraId, insumoId])
+  @@unique([id, insumoId])
+  @@map("detalles_compra")
+}
+
+model PagoCompra {
+  id         Int      @id @default(autoincrement())
+  compraId   Int      @map("compra_id")
+  referencia String   @db.NVarChar(60)
+  metodo     String   @db.NVarChar(30)
+  monto      Decimal  @db.Decimal(12, 2)
+  fecha      DateTime @default(now())
+  compra     Compra   @relation(fields: [compraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([compraId, referencia])
+  @@map("pagos_compra")
 }
