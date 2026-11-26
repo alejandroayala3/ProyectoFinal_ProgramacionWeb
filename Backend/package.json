@@ -25,5 +25,10 @@
   "devDependencies": {
     "@types/node": "^26.6.11",
     "prisma": "^7.10.1"
+  },
+  "overrides": {
+  "@prisma/config@7.10.1": {
+    "effect": "3.22.1"
   }
+}
 }
