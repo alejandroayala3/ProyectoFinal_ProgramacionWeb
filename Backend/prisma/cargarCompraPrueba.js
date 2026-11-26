@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
+import { ErrorCargaDemo, confirmarCargaDemo, verificarDestinoDemo } from './destinoDemo.js';
 
 const proveedorDemo = { codigo: 'PROV-DEMO-001', nombre: 'Proveedor ficticio Orígenes', activo: true };
 const factura = 'DEMO-COMPRA-001';
@@ -57,18 +58,10 @@ function verificarCompra(compra, sucursalId, insumoId) {
 }
 
 async function cargarCompraPrueba() {
-    if (process.env.DB_HOST?.toLowerCase() !== 'localhost' ||
-        Number(process.env.DB_PORT) !== 1432 || process.env.DB_NAME !== 'origenesv_nuevo') {
-        throw new ConflictoCompra('La carga solo se puede ejecutar en localhost:1432/origenesv_nuevo.');
-    }
+    const destino = confirmarCargaDemo();
 
     return prisma.$transaction(async (tx) => {
-        const [destino] = await tx.$queryRaw`
-            SELECT DB_NAME() AS base, CONVERT(int, CONNECTIONPROPERTY('local_tcp_port')) AS puerto
-        `;
-        if (destino?.base !== 'origenesv_nuevo' || destino.puerto !== 1432) {
-            throw new ConflictoCompra('La conexión SQL no corresponde a la base y puerto esperados.');
-        }
+        await verificarDestinoDemo(tx, destino);
 
         const sucursal = await tx.sucursal.findUnique({ where: { nombre: 'Sucursal Central' } });
         const insumo = await tx.insumo.findUnique({ where: { codigo: 'INS-PECHUGA-POLLO' } });
@@ -149,7 +142,7 @@ async function cargarCompraPrueba() {
 try {
     console.log(JSON.stringify(await cargarCompraPrueba(), null, 2));
 } catch (error) {
-    if (error instanceof ConflictoCompra) {
+    if (error instanceof ErrorCargaDemo || error instanceof ConflictoCompra) {
         console.error(error.message);
     } else if (error.code === 'P2002' || error.code === 'P2034') {
         console.error(`La carga se revirtió por un conflicto de datos o concurrencia (${error.code}). Puedes volver a ejecutarla.`);

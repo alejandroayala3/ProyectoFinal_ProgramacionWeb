@@ -1,20 +1,13 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
+import { ErrorCargaDemo, confirmarCargaDemo, verificarDestinoDemo } from './destinoDemo.js';
 import { emitirDocumentoVenta, ErrorFacturacion } from '../src/services/facturacion.service.js';
 
 async function cargarFacturaPrueba() {
-    if (process.env.DB_HOST?.toLowerCase() !== 'localhost' ||
-        Number(process.env.DB_PORT) !== 1432 || process.env.DB_NAME !== 'origenesv_nuevo') {
-        throw new ErrorFacturacion('DESTINO_INVALIDO', 'La prueba solo se puede ejecutar en localhost:1432/origenesv_nuevo.');
-    }
+    const destino = confirmarCargaDemo();
 
     return prisma.$transaction(async (tx) => {
-        const [destino] = await tx.$queryRaw`
-            SELECT DB_NAME() AS base, CONVERT(int, CONNECTIONPROPERTY('local_tcp_port')) AS puerto
-        `;
-        if (destino?.base !== 'origenesv_nuevo' || destino.puerto !== 1432) {
-            throw new ErrorFacturacion('DESTINO_INVALIDO', 'La conexión SQL no corresponde a la base y puerto esperados.');
-        }
+        await verificarDestinoDemo(tx, destino);
 
         const venta = await tx.venta.findUnique({
             where: { referencia: 'DEMO-VENTA-001' },
@@ -50,7 +43,7 @@ async function cargarFacturaPrueba() {
 try {
     console.log(JSON.stringify(await cargarFacturaPrueba(), null, 2));
 } catch (error) {
-    if (error instanceof ErrorFacturacion) {
+    if (error instanceof ErrorCargaDemo || error instanceof ErrorFacturacion) {
         console.error(error.message);
     } else if (error.code === 'P2002' || error.code === 'P2034') {
         console.error(`La emisión se revirtió por un conflicto de datos o concurrencia (${error.code}). Puedes volver a ejecutarla.`);

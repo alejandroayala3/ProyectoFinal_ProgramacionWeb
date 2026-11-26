@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
+import { ErrorCargaDemo, confirmarCargaDemo, verificarDestinoDemo } from './destinoDemo.js';
 
 const insumos = {
     'INS-PAN-HAMBURGUESA': { nombre: 'Pan para hamburguesa', unidadBase: 'unidad' },
@@ -160,19 +161,10 @@ async function cargarReceta(tx, producto, receta, idPorCodigo) {
 }
 
 async function cargarHamburguesasYBebidas() {
-    if (process.env.DB_HOST?.toLowerCase() !== 'localhost' ||
-        Number(process.env.DB_PORT) !== 1432 ||
-        process.env.DB_NAME !== 'origenesv_nuevo') {
-        throw new ConflictoCarga('La carga solo se puede ejecutar en localhost:1432/origenesv_nuevo.');
-    }
+    const destino = confirmarCargaDemo();
 
     return prisma.$transaction(async (tx) => {
-        const [destino] = await tx.$queryRaw`
-            SELECT DB_NAME() AS base, CONVERT(int, CONNECTIONPROPERTY('local_tcp_port')) AS puerto
-        `;
-        if (destino?.base !== 'origenesv_nuevo' || destino.puerto !== 1432) {
-            throw new ConflictoCarga('La conexión SQL no corresponde a la base y puerto esperados.');
-        }
+        await verificarDestinoDemo(tx, destino);
 
         const creados = { categorias: 0, productos: 0, insumos: 0, filasReceta: 0 };
         const idPorCodigo = new Map();
@@ -212,14 +204,14 @@ async function cargarHamburguesasYBebidas() {
             verificados.push({ categoria: categoria.nombre, productos, filasReceta });
         }
 
-        return { destino: 'localhost:1432/origenesv_nuevo', creados, verificados };
+        return { destino: destino.destino, creados, verificados };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
 }
 
 try {
     console.log(JSON.stringify(await cargarHamburguesasYBebidas(), null, 2));
 } catch (error) {
-    if (error instanceof ConflictoCarga) {
+    if (error instanceof ErrorCargaDemo || error instanceof ConflictoCarga) {
         console.error(error.message);
     } else if (error.code === 'P2002' || error.code === 'P2034') {
         console.error(`La carga se revirtió por un conflicto de datos o concurrencia (${error.code}). Puedes volver a ejecutarla.`);

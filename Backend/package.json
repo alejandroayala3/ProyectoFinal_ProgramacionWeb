@@ -7,6 +7,7 @@
     "dev": "node --watch-path=./src src/server.js",
     "start": "node src/server.js",
     "seed": "node prisma/seed.js",
+    "db:cargar": "node prisma/ejecutarCargaDemo.js",
     "postinstall": "prisma generate"
   },
   "keywords": [],

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { ErrorHttp } from '../utils/ErrorHttp.js';
+import { filtroSucursal } from '../utils/alcanceSucursal.js';
 import { ejecutarTransaccion } from '../utils/transaccion.js';
 import { enteroPositivo, decimal } from '../utils/validacion.js';
 import { calcular_planilla_empleado, registrarPlanillaQuincenal } from '../services/planilla.service.js';
@@ -31,10 +32,16 @@ function leerPeriodo(cuerpo) {
     return { anio, mes, quincena, inicio, fin };
 }
 
+function filtroDetalles(sucursalId) {
+    return sucursalId === undefined ? undefined : { empleado: { sucursalId } };
+}
+
 // GET /api/planillas
-export async function listarPlanillas(_peticion, respuesta) {
+export async function listarPlanillas(peticion, respuesta) {
+    const filtro = filtroDetalles(filtroSucursal(peticion.auth));
     const planillas = await prisma.planilla.findMany({
-        include: { detalles: true },
+        where: filtro ? { detalles: { some: filtro } } : undefined,
+        include: { detalles: { where: filtro } },
         orderBy: { periodoInicio: 'desc' },
     });
     return respuesta.json({
@@ -42,11 +49,12 @@ export async function listarPlanillas(_peticion, respuesta) {
     });
 }
 
-async function cargarPlanilla(id) {
+async function cargarPlanilla(id, sucursalId) {
     const planilla = await prisma.planilla.findUnique({
         where: { id },
         include: {
             detalles: {
+                where: filtroDetalles(sucursalId),
                 include: {
                     empleado: {
                         select: { codigo: true, nombreCompleto: true, cargo: true, salarioMensual: true, sucursal: { select: { nombre: true } } },
@@ -57,12 +65,16 @@ async function cargarPlanilla(id) {
         },
     });
     if (!planilla) throw new ErrorHttp(404, 'La planilla no existe');
+    if (sucursalId !== undefined && !planilla.detalles.length) {
+        throw new ErrorHttp(403, 'La planilla no contiene empleados de tu sucursal');
+    }
     return { ...planilla, totales: totalizar(planilla.detalles) };
 }
 
 // GET /api/planillas/:id — boletas de cada empleado y totales.
 export async function obtenerPlanilla(peticion, respuesta) {
-    const planilla = await cargarPlanilla(enteroPositivo(peticion.params.id, 'El id de la planilla'));
+    const id = enteroPositivo(peticion.params.id, 'El id de la planilla');
+    const planilla = await cargarPlanilla(id, filtroSucursal(peticion.auth));
     return respuesta.json({ planilla });
 }
 

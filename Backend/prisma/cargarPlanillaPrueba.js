@@ -1,18 +1,13 @@
 import assert from 'node:assert/strict';
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
+import { ErrorCargaDemo, confirmarCargaDemo, verificarDestinoDemo } from './destinoDemo.js';
 import { registrarPlanillaQuincenal } from '../src/services/planilla.service.js';
 
 async function cargarPlanillaPrueba() {
-    if (process.env.DB_HOST?.toLowerCase() !== 'localhost' ||
-        Number(process.env.DB_PORT) !== 1432 || process.env.DB_NAME !== 'origenesv_nuevo') {
-        throw new Error('La prueba solo se puede ejecutar en localhost:1432/origenesv_nuevo.');
-    }
+    const destino = confirmarCargaDemo();
     return prisma.$transaction(async (tx) => {
-        const [destino] = await tx.$queryRaw`
-            SELECT DB_NAME() AS base, CONVERT(int, CONNECTIONPROPERTY('local_tcp_port')) AS puerto
-        `;
-        assert.ok(destino?.base === 'origenesv_nuevo' && destino.puerto === 1432, 'Destino SQL incorrecto.');
+        await verificarDestinoDemo(tx, destino);
         const sucursal = await tx.sucursal.findUnique({ where: { nombre: 'Sucursal Central' } });
         assert.ok(sucursal?.activo, 'No se encontró Sucursal Central activa.');
 
@@ -58,7 +53,7 @@ async function cargarPlanillaPrueba() {
 try {
     console.log(JSON.stringify(await cargarPlanillaPrueba()));
 } catch (error) {
-    console.error(error.code === 'ERR_ASSERTION' || error instanceof RangeError
+    console.error(error instanceof ErrorCargaDemo || error.code === 'ERR_ASSERTION' || error instanceof RangeError
         ? error.message
         : `Falló la carga de planilla (${error.code ?? error.name}).`);
     process.exitCode = 1;

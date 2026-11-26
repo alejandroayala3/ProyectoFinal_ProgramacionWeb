@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
+import { ErrorCargaDemo, confirmarCargaDemo, verificarDestinoDemo } from './destinoDemo.js';
 
 const referenciaDemo = 'DEMO-VENTA-001';
 export const lineasDemo = [
@@ -56,10 +57,7 @@ function resumir(venta, creada) {
 }
 
 export async function registrarVentaPrueba(referencia, lineas) {
-    if (process.env.DB_HOST?.toLowerCase() !== 'localhost' ||
-        Number(process.env.DB_PORT) !== 1432 || process.env.DB_NAME !== 'origenesv_nuevo') {
-        throw new ConflictoVenta('La carga solo se puede ejecutar en localhost:1432/origenesv_nuevo.');
-    }
+    const destino = confirmarCargaDemo();
 
     const porCodigo = new Map(lineas.map(linea => [linea.codigo, linea]));
     if (!/^DEMO-VENTA-[A-Z0-9-]{1,39}$/.test(referencia) ||
@@ -69,12 +67,7 @@ export async function registrarVentaPrueba(referencia, lineas) {
     }
 
     return prisma.$transaction(async (tx) => {
-        const [destino] = await tx.$queryRaw`
-            SELECT DB_NAME() AS base, CONVERT(int, CONNECTIONPROPERTY('local_tcp_port')) AS puerto
-        `;
-        if (destino?.base !== 'origenesv_nuevo' || destino.puerto !== 1432) {
-            throw new ConflictoVenta('La conexión SQL no corresponde a la base y puerto esperados.');
-        }
+        await verificarDestinoDemo(tx, destino);
 
         const sucursal = await tx.sucursal.findUnique({ where: { nombre: 'Sucursal Central' } });
         const usuario = await tx.usuario.findUnique({ where: { correo: 'admin@origenes.sv' } });
@@ -168,7 +161,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     try {
         console.log(JSON.stringify(await registrarVentaPrueba(referenciaDemo, lineasDemo), null, 2));
     } catch (error) {
-        if (error instanceof ConflictoVenta || error instanceof StockInsuficiente) {
+        if (error instanceof ErrorCargaDemo || error instanceof ConflictoVenta || error instanceof StockInsuficiente) {
             console.error(error.message);
         } else if (error.code === 'P2002' || error.code === 'P2034') {
             console.error(`La transacción se revirtió por un conflicto de datos o concurrencia (${error.code}). Puedes volver a ejecutarla.`);
