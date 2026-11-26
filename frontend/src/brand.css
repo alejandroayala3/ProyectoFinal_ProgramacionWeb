@@ -40,8 +40,8 @@ h6,
 }
 
 .workspace-sidebar {
-  border-color: rgba(83, 68, 27, 0.14);
-  background: var(--brand-sage);
+  border-color: #35312c;
+  background: #191919;
 }
 
 .workspace-brand {
@@ -49,10 +49,10 @@ h6,
 }
 
 .workspace-brand img {
-  display: block;
+ display: block;
   width: min(190px, 100%);
   height: auto;
-  filter: brightness(0) saturate(100%) invert(25%) sepia(27%) saturate(1197%) hue-rotate(9deg) brightness(94%) contrast(91%);
+  filter: none;
 }
 
 .workspace-nav button {
@@ -285,7 +285,7 @@ h6,
   width: min(300px, 78%);
   height: auto;
   margin: 0 0 34px;
-  filter: brightness(0) saturate(100%) invert(25%) sepia(27%) saturate(1197%) hue-rotate(9deg) brightness(94%) contrast(91%);
+  filter: none;
 }
 
 .loginSection h1 {
