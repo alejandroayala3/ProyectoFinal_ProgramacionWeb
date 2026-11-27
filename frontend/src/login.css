@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+
+:root {
+    background-color: #FDFCF9;
+    --font-family: 'Inter', sans-serif;
+
+}
+
+body {
+    margin: 0;
+    background-color: #FDFCF9;
+    font-family: var(--font-family);
+    background-color: #f8fafc;
+    color: #0f172a;
+    margin: 0;
+    padding: 0;
+}
+
+.loginSection {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.login-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(32px, 5vh, 56px);
+    padding: clamp(48px, 6vw, 88px) clamp(28px, 4vw, 64px);
+    text-align: center;
+}
+
+.login-copy {
+    width: 100%;
+    max-width: 560px;
+}
+
+@media (max-width: 767px) {
+    .loginSection {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .login-intro {
+        gap: 24px;
+        padding: 40px 24px 32px;
+    }
+}
+
+.radio-options {
+    background-color: #FDFCF9;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid #e7e6e4;
+}
+
+.radio-options:hover {
+    background-color: #f7f6f3;
+    border-color: #d7d6d4;
+}
+
+.radio-input {
+    appearance: none;
+    padding: 1px;
+    border: 2px solid #e7e6e4;
+}
+
+.radio-options:has(input[type='radio']:checked) {
+    border-color: #B95136;
+    background-color: #F7EAE3;
+    font-weight: 500;
+}
+
+
+input[type="radio"]:focus,
+input[type="radio"]:active,
+input[type="radio"]:focus-visible {
+    outline: none !important;
+    /* Elimina la línea azul nativa */
+    box-shadow: none !important;
+    /* Elimina sombras de frameworks como Bootstrap */
+}
+
+
+
+input[type='radio']:checked {
+    background-image: radial-gradient(#B95136 0%, #B95136 40%, transparent 50%, transparent);
+    color: #B95136;
+    background-color: #F7EAE3;
+    accent-color: #B95136;
+    border-color: #B95136;
+
+}
