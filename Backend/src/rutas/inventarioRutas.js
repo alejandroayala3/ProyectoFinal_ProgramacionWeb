@@ -1,31 +1,21 @@
 import { Router } from 'express';
 import {
-    explotarMateriales,
-    simularExplosionMateriales,
-    consultarAlertasStock,
-    consultarInsumos,
-    consultarCatalogoInsumos,
-    consultarRecetas,
-    consultarRecetaDeProducto,
-    registrarInsumo,
-    actualizarInsumo,
-    ajustarInventario,
-    consultarMovimientosInventario
+    actualizarInsumo, actualizarMinimo, crearAjuste, crearInsumo, listarAlertas,
+    listarExistencias, listarInsumos, listarMovimientos,
 } from '../controladores/inventarioControlador.js';
-import { requerirPermiso } from '../middleware/autenticacion.js';
+import { requerirRol } from '../middleware/autenticacion.js';
 
-const enrutadorInventario = Router();
+// Cualquier usuario autenticado consulta; solo gerencia modifica.
+const enrutador = Router();
+const soloGestion = requerirRol('admin', 'gerente');
 
-enrutadorInventario.post('/explosion', requerirPermiso('gestionar_inventario'), explotarMateriales);
-enrutadorInventario.post('/explosion/simulacion', requerirPermiso('ver_inventario'), simularExplosionMateriales);
-enrutadorInventario.get('/alertas', requerirPermiso('ver_inventario'), consultarAlertasStock);
-enrutadorInventario.get('/insumos/catalogo', requerirPermiso('gestionar_inventario'), consultarCatalogoInsumos);
-enrutadorInventario.get('/insumos', requerirPermiso('ver_inventario'), consultarInsumos);
-enrutadorInventario.get('/recetas', requerirPermiso('gestionar_inventario'), consultarRecetas);
-enrutadorInventario.get('/recetas/:id_producto', requerirPermiso('gestionar_inventario'), consultarRecetaDeProducto);
-enrutadorInventario.post('/insumos', requerirPermiso('gestionar_inventario'), registrarInsumo);
-enrutadorInventario.patch('/insumos/:id', requerirPermiso('gestionar_inventario'), actualizarInsumo);
-enrutadorInventario.post('/ajustes', requerirPermiso('gestionar_inventario'), ajustarInventario);
-enrutadorInventario.get('/movimientos', requerirPermiso('ver_inventario'), consultarMovimientosInventario);
+enrutador.get('/insumos', listarInsumos);
+enrutador.post('/insumos', soloGestion, crearInsumo);
+enrutador.patch('/insumos/:id', soloGestion, actualizarInsumo);
+enrutador.get('/existencias', listarExistencias);
+enrutador.patch('/existencias/:insumoId', soloGestion, actualizarMinimo);
+enrutador.get('/alertas', listarAlertas);
+enrutador.get('/movimientos', listarMovimientos);
+enrutador.post('/ajustes', soloGestion, crearAjuste);
 
-export default enrutadorInventario;
+export default enrutador;
