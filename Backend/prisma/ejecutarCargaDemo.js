@@ -6,6 +6,7 @@ const pasos = [
     'seed.js',
     'cargarSucursales.js',
     'cargarUsuariosDemo.js',
+    'cargarEmpleadosDemo.js',
     'cargarEntradas.js',
     'cargarPlatosPrincipales.js',
     'cargarHamburguesasYBebidas.js',
@@ -15,7 +16,7 @@ const pasos = [
     'cargarVentaPrueba.js',
     'cargarCajaPrueba.js',
     'cargarFacturaPrueba.js',
-    'cargarPlanillaPrueba.js',
+    'cargarCcfDemo.js',
 ];
 
 try {

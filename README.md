@@ -30,7 +30,7 @@ Antes de la primera carga, define `DEMO_ADMIN_PASSWORD` con una contraseña excl
 npm run db:cargar -- "--confirmar-demo=localhost:1433/origenesv_demo"
 ```
 
-El comando ejecuta el seed, las sucursales, sus nueve usuarios demo, el catálogo y las recetas, el inventario inicial, la compra, la venta, la caja, la factura y la planilla de prueba. Se detiene en el primer error. Los pasos terminados quedan guardados; después de resolver el error, puedes repetir el comando sin duplicar datos ni volver a aplicar movimientos de stock. Tampoco se cambia la contraseña de una cuenta demo que ya existe.
+El comando ejecuta el seed, las sucursales, sus nueve usuarios y empleados demo, el catálogo y las recetas, el inventario inicial, la compra, la venta, la caja, la factura de consumidor final y el CCF con cobro bitcoin académico. Se detiene en el primer error. Los pasos terminados quedan guardados; después de resolver el error, puedes repetir el comando sin duplicar datos ni volver a aplicar movimientos de stock. Tampoco se cambia la contraseña de una cuenta demo que ya existe.
 
 Para ejecutar un paso individual, pasa la misma confirmación a `npm run seed --` o al script, por ejemplo `node prisma/cargarEntradas.js "--confirmar-demo=localhost:1433/origenesv_demo"`.
 

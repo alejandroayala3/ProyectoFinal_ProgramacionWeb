@@ -244,6 +244,7 @@ model TurnoCaja {
   diferencia       Decimal?         @db.Decimal(12, 2)
   totalTarjeta     Decimal?         @map("total_tarjeta") @db.Decimal(12, 2)
   totalDigital     Decimal?         @map("total_digital") @db.Decimal(12, 2)
+  totalBitcoin     Decimal?         @map("total_bitcoin") @db.Decimal(12, 2)
   sucursal         Sucursal         @relation(fields: [sucursalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   usuario          Usuario          @relation(fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   cobros           CobroVenta[]
@@ -255,16 +256,17 @@ model TurnoCaja {
 }
 
 model CobroVenta {
-  id         BigInt    @id @default(autoincrement())
-  referencia String    @unique @db.NVarChar(60)
-  turnoId    Int       @map("turno_id")
-  ventaId    Int       @map("venta_id")
-  sucursalId Int       @map("sucursal_id")
-  metodo     String    @db.VarChar(10)
-  monto      Decimal   @db.Decimal(12, 2)
-  fecha      DateTime  @default(now())
-  turno      TurnoCaja @relation(fields: [turnoId, sucursalId], references: [id, sucursalId], onDelete: NoAction, onUpdate: NoAction)
-  venta      Venta     @relation(fields: [ventaId, sucursalId], references: [id, sucursalId], onDelete: NoAction, onUpdate: NoAction)
+  id                BigInt    @id @default(autoincrement())
+  referencia        String    @unique @db.NVarChar(60)
+  referenciaExterna String?   @map("referencia_externa") @db.NVarChar(60)
+  turnoId           Int       @map("turno_id")
+  ventaId           Int       @map("venta_id")
+  sucursalId        Int       @map("sucursal_id")
+  metodo            String    @db.VarChar(10)
+  monto             Decimal   @db.Decimal(12, 2)
+  fecha             DateTime  @default(now())
+  turno             TurnoCaja @relation(fields: [turnoId, sucursalId], references: [id, sucursalId], onDelete: NoAction, onUpdate: NoAction)
+  venta             Venta     @relation(fields: [ventaId, sucursalId], references: [id, sucursalId], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([turnoId, metodo])
   @@index([ventaId])

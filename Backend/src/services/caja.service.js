@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-const metodos = new Set(['efectivo', 'tarjeta', 'digital']);
+export const metodosCobro = Object.freeze(['efectivo', 'tarjeta', 'digital', 'bitcoin']);
 const cero = new Prisma.Decimal(0);
 const maximoImporte = new Prisma.Decimal('9999999999.99');
 
@@ -68,16 +68,20 @@ export async function abrirTurno(tx, { referencia, sucursalId, usuarioId, fondoI
     return tx.turnoCaja.create({ data: { referencia, sucursalId, usuarioId, fondoInicial, fechaApertura: new Date() } });
 }
 
-export async function registrarCobro(tx, { referencia, turnoId, ventaId, metodo, monto }) {
+export async function registrarCobro(tx, { referencia, referenciaExterna = null, turnoId, ventaId, metodo, monto }) {
     referencia = textoObligatorio(referencia, 60, 'la referencia del cobro');
+    if (referenciaExterna !== null) {
+        referenciaExterna = textoObligatorio(referenciaExterna, 60, 'la referencia externa');
+    }
     monto = importe(monto);
-    if (!metodos.has(metodo)) throw new ErrorCaja('METODO_INVALIDO', 'El medio de pago no es válido.');
+    if (!metodosCobro.includes(metodo)) throw new ErrorCaja('METODO_INVALIDO', 'El medio de pago no es válido.');
 
     const turno = await bloquearTurno(tx, turnoId);
     const previo = await tx.cobroVenta.findUnique({ where: { referencia } });
     if (previo) {
         if (previo.referencia !== referencia || previo.turnoId !== turnoId ||
-            previo.ventaId !== ventaId || previo.metodo !== metodo || !previo.monto.equals(monto)) {
+            previo.ventaId !== ventaId || previo.metodo !== metodo || previo.referenciaExterna !== referenciaExterna ||
+            !previo.monto.equals(monto)) {
             throw new ErrorCaja('REFERENCIA_EN_USO', 'La referencia pertenece a un cobro con otros datos.');
         }
         return previo;
@@ -95,7 +99,9 @@ export async function registrarCobro(tx, { referencia, turnoId, ventaId, metodo,
     if ((_sum.monto ?? cero).plus(monto).gt(venta.total)) {
         throw new ErrorCaja('SOBREPAGO', 'El cobro supera el saldo pendiente de la venta.');
     }
-    return tx.cobroVenta.create({ data: { referencia, turnoId, ventaId, sucursalId: turno.sucursalId, metodo, monto, fecha: new Date() } });
+    return tx.cobroVenta.create({
+        data: { referencia, referenciaExterna, turnoId, ventaId, sucursalId: turno.sucursalId, metodo, monto, fecha: new Date() },
+    });
 }
 
 export async function registrarMovimientoCaja(tx, { referencia, turnoId, tipo, monto, motivo }) {
@@ -147,6 +153,7 @@ export async function cerrarTurno(tx, { turnoId, efectivoContado }) {
             diferencia: efectivoContado.minus(efectivoEsperado),
             totalTarjeta: porMetodo.get('tarjeta') ?? cero,
             totalDigital: porMetodo.get('digital') ?? cero,
+            totalBitcoin: porMetodo.get('bitcoin') ?? cero,
         },
     });
 }

@@ -4,12 +4,10 @@ import prisma from '../config/prisma.js';
 import { ErrorHttp } from '../utils/ErrorHttp.js';
 import { ejecutarTransaccion } from '../utils/transaccion.js';
 import { filtroSucursal, sucursalOperacion, verificarAccesoTurno, verificarSucursal } from '../utils/alcanceSucursal.js';
-import { arreglo, decimal, enteroOpcional, enteroPositivo, limite, opcion, rangoFechas } from '../utils/validacion.js';
+import { arreglo, decimal, enteroOpcional, enteroPositivo, limite, opcion, rangoFechas, textoOpcional } from '../utils/validacion.js';
 import { registrarVenta } from '../services/venta.service.js';
 import { emitirDocumentoVenta } from '../services/facturacion.service.js';
-import { registrarCobro } from '../services/caja.service.js';
-
-const metodosPago = ['efectivo', 'tarjeta', 'digital'];
+import { metodosCobro, registrarCobro } from '../services/caja.service.js';
 const tiposDocumento = ['consumidor_final', 'ccf'];
 const cero = new Prisma.Decimal(0);
 
@@ -42,7 +40,8 @@ function normalizarLineas(lineas) {
 function normalizarPagos(pagos) {
     if (pagos === undefined || pagos === null) return [];
     return arreglo(pagos, 'Los pagos', { minimo: 0, maximo: 5 }).map((pago, indice) => ({
-        metodo: opcion(pago?.metodo, metodosPago, `El método del pago ${indice + 1}`),
+        metodo: opcion(pago?.metodo, metodosCobro, `El método del pago ${indice + 1}`),
+        referenciaExterna: textoOpcional(pago?.referenciaExterna, 60, `La referencia externa del pago ${indice + 1}`),
         monto: decimal(pago?.monto, `El monto del pago ${indice + 1}`),
     }));
 }

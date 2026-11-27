@@ -5,7 +5,7 @@ import { ErrorHttp } from '../utils/ErrorHttp.js';
 import { ejecutarTransaccion } from '../utils/transaccion.js';
 import { filtroSucursal, sucursalOperacion, verificarAccesoTurno } from '../utils/alcanceSucursal.js';
 import { booleanoOpcional, decimal, enteroPositivo, limite, opcion, textoOpcional, textoRequerido } from '../utils/validacion.js';
-import { abrirTurno, cerrarTurno, registrarCobro, registrarMovimientoCaja } from '../services/caja.service.js';
+import { abrirTurno, cerrarTurno, metodosCobro, registrarCobro, registrarMovimientoCaja } from '../services/caja.service.js';
 
 const cero = new Prisma.Decimal(0);
 
@@ -24,7 +24,7 @@ async function resumenTurno(turnoId) {
     const cobros = await prisma.cobroVenta.groupBy({
         by: ['metodo'], where: { turnoId }, _sum: { monto: true }, _count: { _all: true },
     });
-    const porMetodo = Object.fromEntries(['efectivo', 'tarjeta', 'digital'].map(metodo => {
+    const porMetodo = Object.fromEntries(metodosCobro.map(metodo => {
         const fila = cobros.find(cobro => cobro.metodo === metodo);
         return [metodo, { total: fila?._sum.monto ?? cero, cobros: fila?._count._all ?? 0 }];
     }));
@@ -105,7 +105,8 @@ export async function crearCobro(peticion, respuesta) {
         referencia: textoOpcional(cuerpo.referencia, 60, 'La referencia') ?? `COBRO-${randomUUID()}`,
         turnoId,
         ventaId: enteroPositivo(cuerpo.ventaId, 'La venta'),
-        metodo: opcion(cuerpo.metodo, ['efectivo', 'tarjeta', 'digital'], 'El método de pago'),
+        metodo: opcion(cuerpo.metodo, metodosCobro, 'El método de pago'),
+        referenciaExterna: textoOpcional(cuerpo.referenciaExterna, 60, 'La referencia externa'),
         monto: decimal(cuerpo.monto, 'El monto'),
     }));
     return respuesta.status(201).json({ cobro });
