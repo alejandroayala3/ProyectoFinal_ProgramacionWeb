@@ -38,7 +38,7 @@ export async function solicitudApi(path, { method = 'GET', body } = {}) {
     }
 
     if (!response.ok) {
-        if (response.status === 401 && !['/login', '/cambiar-password'].includes(path)) {
+        if (response.status === 401 && !['/auth/login', '/cambiar-password'].includes(path)) {
             borrarSesion();
             window.dispatchEvent(new Event('origen:sesion-expirada'));
         }
@@ -64,7 +64,19 @@ export function leerSesion() {
 }
 
 export function guardarSesion(sesion) {
-    sessionStorage.setItem(claveSesion, JSON.stringify(sesion));
+    const usuario = sesion.usuario;
+    const normalizada = {
+        ...sesion,
+        usuario: {
+            ...usuario,
+            nombre_completo: usuario.nombreCompleto ?? usuario.nombre_completo,
+            rol: typeof usuario.rol === 'string' ? usuario.rol : usuario.rol?.codigo,
+            permisos: usuario.permisos ?? [],
+            sucursal: usuario.sucursal ?? (usuario.sucursalId == null ? null : `Sucursal #${usuario.sucursalId}`),
+        },
+    };
+    sessionStorage.setItem(claveSesion, JSON.stringify(normalizada));
+    return normalizada;
 }
 
 export function borrarSesion() {

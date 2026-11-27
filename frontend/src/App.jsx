@@ -58,15 +58,16 @@ function App() {
     }, []);
 
     useEffect(() => {
-        if (!sesion?.token) {
+        const token = sesion?.token;
+        if (!token) {
             return undefined;
         }
 
         let activo = true;
-        solicitudApi('/session')
-            .then((sesionActual) => {
+        solicitudApi('/auth/sesion')
+            .then(({ usuario }) => {
                 if (!activo) return;
-                guardarSesion(sesionActual);
+                const sesionActual = guardarSesion({ token, usuario });
                 setErrorSesion('');
                 setSesion(sesionActual);
             })
