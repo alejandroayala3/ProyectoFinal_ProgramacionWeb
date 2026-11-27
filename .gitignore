@@ -6,3 +6,4 @@ generated/
 .claude/
 .cursor/
 .devin/
+dist/

@@ -23,4 +23,4 @@ arrancar().catch(async (error) => {
     console.error('No se pudo arrancar el servidor:', error);
     await prisma.$disconnect();
     process.exitCode = 1;
-}); 
+});

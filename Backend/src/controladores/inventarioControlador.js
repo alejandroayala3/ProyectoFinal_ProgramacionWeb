@@ -10,6 +10,13 @@ import { ajustarExistencia } from '../services/inventario.service.js';
 
 const unidades = ['g', 'ml', 'unidad'];
 
+// Traduce un error de Prisma conocido a un mensaje de negocio; cualquier otro error se relanza igual.
+function traducirErrorPrisma(error, mapa) {
+    const traduccion = mapa[error?.code];
+    if (traduccion) throw new ErrorHttp(traduccion.codigoHttp, traduccion.mensaje);
+    throw error;
+}
+
 // ----- Insumos -----
 
 // GET /api/inventario/insumos?activo=
@@ -33,14 +40,21 @@ export async function crearInsumo(peticion, respuesta) {
     const cantidadMinima = cuerpo.cantidadMinima === undefined ? new Prisma.Decimal(0)
         : decimal(cuerpo.cantidadMinima, 'La cantidad mínima', { decimales: 3, permiteCero: true });
 
-    const insumo = await ejecutarTransaccion(async (tx) => {
-        const creado = await tx.insumo.create({ data: datos });
-        const sucursales = await tx.sucursal.findMany({ where: { activo: true }, select: { id: true } });
-        await tx.existenciaSucursal.createMany({
-            data: sucursales.map(({ id }) => ({ sucursalId: id, insumoId: creado.id, cantidadMinima })),
+    let insumo;
+    try {
+        insumo = await ejecutarTransaccion(async (tx) => {
+            const creado = await tx.insumo.create({ data: datos });
+            const sucursales = await tx.sucursal.findMany({ where: { activo: true }, select: { id: true } });
+            await tx.existenciaSucursal.createMany({
+                data: sucursales.map(({ id }) => ({ sucursalId: id, insumoId: creado.id, cantidadMinima })),
+            });
+            return creado;
         });
-        return creado;
-    });
+    } catch (error) {
+        traducirErrorPrisma(error, {
+            P2002: { codigoHttp: 409, mensaje: 'Ya existe un insumo con ese código' },
+        });
+    }
     return respuesta.status(201).json({ insumo });
 }
 
@@ -51,11 +65,18 @@ export async function actualizarInsumo(peticion, respuesta) {
     const activo = booleanoOpcional(peticion.body?.activo, 'El estado activo');
     if (activo !== null) datos.activo = activo;
     if (!Object.keys(datos).length) throw new ErrorHttp(400, 'No hay datos para actualizar');
-    const insumo = await prisma.insumo.update({
-        where: { id: enteroPositivo(peticion.params.id, 'El id del insumo') },
-        data: datos,
-    });
-    return respuesta.json({ insumo });
+
+    try {
+        const insumo = await prisma.insumo.update({
+            where: { id: enteroPositivo(peticion.params.id, 'El id del insumo') },
+            data: datos,
+        });
+        return respuesta.json({ insumo });
+    } catch (error) {
+        return traducirErrorPrisma(error, {
+            P2025: { codigoHttp: 404, mensaje: 'El insumo no existe' },
+        });
+    }
 }
 
 // ----- Existencias y alertas -----
@@ -95,11 +116,19 @@ export async function listarAlertas(peticion, respuesta) {
 export async function actualizarMinimo(peticion, respuesta) {
     const sucursalId = sucursalOperacion(peticion.auth, peticion.body?.sucursalId);
     const insumoId = enteroPositivo(peticion.params.insumoId, 'El insumo');
-    const existencia = await prisma.existenciaSucursal.update({
-        where: { sucursalId_insumoId: { sucursalId, insumoId } },
-        data: { cantidadMinima: decimal(peticion.body?.cantidadMinima, 'La cantidad mínima', { decimales: 3, permiteCero: true }) },
-    });
-    return respuesta.json({ existencia });
+    const cantidadMinima = decimal(peticion.body?.cantidadMinima, 'La cantidad mínima', { decimales: 3, permiteCero: true });
+
+    try {
+        const existencia = await prisma.existenciaSucursal.update({
+            where: { sucursalId_insumoId: { sucursalId, insumoId } },
+            data: { cantidadMinima },
+        });
+        return respuesta.json({ existencia });
+    } catch (error) {
+        return traducirErrorPrisma(error, {
+            P2025: { codigoHttp: 404, mensaje: 'El insumo no tiene existencia en esta sucursal' },
+        });
+    }
 }
 
 // ----- Movimientos -----
